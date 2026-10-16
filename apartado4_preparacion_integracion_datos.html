@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apartado 4: Preparación e Integración de Datos</title>
+<style>
+:root{
+  --panel: rgba(13, 27, 42, 0.88); 
+  --panel2: rgba(20, 38, 59, 0.92); 
+  --line: rgba(46, 75, 107, 0.6);
+  --txt: #e2e8f0; 
+  --mut: #94a3b8; 
+  --primary: #0ea5e9; 
+  --accent: #10b981;  
+  --violet: #8b5cf6;  
+  --gold: #f59e0b;    
+  --ok: #34d399; 
+  --bad: #f43f5e;
+  --r: 20px; 
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  font-family: var(--font);
+  background-color: #060913;
+  background-image: 
+    radial-gradient(circle at 15% var(--bg-pos-1, 10%), rgba(14, 165, 233, 0.22) 0%, transparent 45%),
+    radial-gradient(circle at 85% var(--bg-pos-2, 80%), rgba(16, 185, 129, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 50% var(--bg-pos-3, 50%), rgba(139, 92, 246, 0.18) 0%, transparent 60%);
+  background-attachment: fixed;
+  color: var(--txt);
+  line-height: 1.7;
+  transition: background 0.1s ease-out;
+  overflow-x: hidden;
+}
+
+/* Contenido perfectamente centrado */
+main{
+  max-width: 1020px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+  position: relative;
+  z-index: 2;
+}
+
+:focus-visible{outline:2px solid var(--primary);outline-offset:4px}
+
+/* ===== WIDGET FLOTANTE DE LA ESCALERA Y BOTÓN ABAJO ===== */
+.ladder-floating-widget {
+  position: fixed;
+  top: 75px;
+  right: 20px;
+  width: 280px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  z-index: 100;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.ladder-floating-widget.collapsed {
+  transform: translateX(320px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Botón flotante situado en la parte inferior derecha */
+.toggle-ladder-btn {
+  position: fixed;
+  bottom: 25px;
+  right: 20px;
+  z-index: 101;
+  background: var(--panel2);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  padding: 10px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  transition: all 0.2s;
+}
+.toggle-ladder-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+@media(max-width:1200px){
+  .ladder-floating-widget {
+    position: relative;
+    top: auto; right: auto;
+    width: 100%;
+    margin-bottom: 30px;
+  }
+  .toggle-ladder-btn { display: none; }
+}
+
+.ladder-title {
+  font-size: 0.9rem;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(20, 38, 59, 0.5);
+  border: 1px solid rgba(46, 75, 107, 0.4);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: var(--mut);
+  transition: all 0.3s ease;
+}
+.step.active {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.25), rgba(16, 185, 129, 0.25));
+  border-color: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  transform: scale(1.02);
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.3);
+}
+.step.passed {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.apprentice-avatar {
+  font-size: 1.1rem;
+}
+
+/* ===== HEADER CON PALABRAS FLOTANTES ===== */
+header{
+  position: relative;
+  padding: 80px 20px 40px;
+  text-align: center;
+  overflow: hidden;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 40px;
+}
+
+.floating-words-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.floating-word {
+  position: absolute;
+  font-weight: 700;
+  font-family: monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  opacity: 0;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  user-select: none;
+}
+
+@keyframes floatWord1 {
+  0% { transform: translate(-100px, 0) scale(0.8); opacity: 0; }
+  20% { opacity: 0.15; }
+  50% { opacity: 0.25; }
+  80% { opacity: 0.15; }
+  100% { transform: translate(calc(100vw + 100px), -50px) scale(1.2); opacity: 0; }
+}
+
+@keyframes floatWord2 {
+  0% { transform: translate(calc(100vw + 100px), 50px) scale(1.1); opacity: 0; }
+  25% { opacity: 0.2; }
+  75% { opacity: 0.2; }
+  100% { transform: translate(-150px, -80px) scale(0.9); opacity: 0; }
+}
+
+@keyframes floatWordVertical {
+  0% { transform: translateY(150px) scale(0.9); opacity: 0; }
+  30% { opacity: 0.18; }
+  70% { opacity: 0.18; }
+  100% { transform: translateY(-150px) scale(1.1); opacity: 0; }
+}
+
+header h1, header .intro, header .stat {
+  position: relative;
+  z-index: 3;
+}
+
+header h1{
+  font-size:clamp(2.2rem, 5vw, 3.8rem);
+  line-height:1.15;
+  letter-spacing:-.03em;
+  background:linear-gradient(135deg, var(--primary), var(--accent) 50%, var(--gold));
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  margin-bottom:16px;
+  text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.intro{margin:0 auto;color:var(--mut);max-width:75ch;font-size:1.12rem}
+.stat{
+  display:inline-flex;gap:14px;align-items:center;margin-top:28px;padding:14px 24px;
+  border:1px solid var(--line);border-radius:999px;background:var(--panel);
+  backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+.stat b{font-size:1.8rem;color:var(--accent)}
+
+/* Barra de Puntuación Flotante */
+.score-bar{
+  position:sticky;top:0;z-index:10;display:flex;justify-content:space-around;align-items:center;
+  padding:12px 20px;background:rgba(6,9,19,0.9);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);font-size:.95rem;font-weight:600;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.score-bar b{color:var(--accent);font-size:1.1rem}
+
+h2{font-size:1.8rem;margin:56px 0 20px;letter-spacing:-.01em}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:32px;
+  backdrop-filter:blur(12px);box-shadow:0 12px 40px rgba(0,0,0,0.4);transition:transform .3s ease;
+}
+
+/* ===== Pestañas ===== */
+.tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.tab{
+  cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--mut);
+  padding:12px 20px;border-radius:14px;font:inherit;font-size:.95rem;font-weight:600;transition:.25s;
+}
+.tab:hover{color:var(--txt);border-color:var(--primary);background:var(--panel2)}
+.tab[aria-selected=true]{
+  color:#fff;background:linear-gradient(135deg, var(--primary), var(--accent));
+  border-color:transparent;box-shadow:0 4px 20px rgba(14, 165, 233, 0.35);
+}
+.panel h3{font-size:1.4rem;margin-bottom:12px;color:var(--primary)}
+.panel p{margin:12px 0;max-width:80ch;color:var(--mut)}
+.panel ul{margin:12px 0 12px 24px;color:var(--mut)}
+.panel li{margin:8px 0}
+.panel{animation:fade .4s cubic-bezier(0.16, 1, 0.3, 1)}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:18px 0}
+.mini{
+  background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:18px;
+  transition:transform .2s;
+}
+.mini:hover{transform:translateY(-3px);border-color:var(--accent)}
+.mini b{color:var(--accent);display:block;margin-bottom:6px;font-size:1.05rem}
+.note{
+  border-left:4px solid var(--gold);padding:14px 18px;background:rgba(245, 158, 11, 0.08);
+  border-radius:0 14px 14px 0;margin:18px 0;color:var(--txt);
+}
+details{
+  background:var(--panel2);border:1px solid var(--line);border-radius:14px;margin:10px 0;padding:14px 18px;
+  transition:background .2s;
+}
+details[open]{background:rgba(20, 38, 59, 0.95)}
+summary{cursor:pointer;font-weight:600;color:var(--txt)}
+details[open] summary{color:var(--primary);margin-bottom:8px}
+
+/* ===== Botones y Opciones de Juegos ===== */
+.btn{
+  cursor:pointer;border:0;border-radius:14px;padding:14px 28px;font:inherit;font-weight:600;color:#fff;
+  background:linear-gradient(135deg, var(--primary), var(--accent));transition:.25s;box-shadow:0 4px 16px rgba(16, 185, 129, 0.3);
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(14, 165, 233, 0.4)}
+.opt{
+  display:block;width:100%;text-align:left;margin:10px 0;padding:14px 18px;border-radius:14px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--txt);font:inherit;cursor:pointer;transition:.2s;
+}
+.opt:hover:not(:disabled){border-color:var(--primary);background:rgba(14, 165, 233, 0.06)}
+.opt.ok{border-color:var(--ok);background:rgba(16,185,129,0.18);color:#6ee7b7}
+.opt.bad{border-color:var(--bad);background:rgba(244,63,94,0.18);color:#fda4af}
+.fb{margin-top:14px;padding:14px 18px;border-radius:14px;background:var(--panel2);border:1px solid var(--line)}
+.prog{height:8px;border-radius:8px;background:var(--panel2);margin-bottom:20px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg, var(--primary), var(--accent));transition:width .4s ease}
+
+/* Juego 2: Match */
+.match{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:700px){.match{grid-template-columns:1fr}}
+.m{
+  padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);
+  cursor:pointer;margin-bottom:10px;color:var(--txt);font:inherit;text-align:left;width:100%;transition:.2s;
+}
+.m:hover{border-color:var(--primary);background:rgba(14, 165, 233, 0.06)}
+.m.sel{border-color:var(--primary);box-shadow:0 0 0 3px rgba(14, 165, 233, 0.3);background:rgba(14, 165, 233, 0.12)}
+.m.done{border-color:var(--ok);background:rgba(16,185,129,0.18);color:#6ee7b7;cursor:default}
+.m.shake{animation:shake .4s;border-color:var(--bad)}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* Certificado */
+.cert{
+  display:none;text-align:center;margin-top:28px;padding:40px 24px;border-radius:var(--r);
+  position:relative;overflow:hidden;border:2px solid var(--gold);
+  background:linear-gradient(135deg, #0d1b2a, #1b263b);box-shadow:0 16px 48px rgba(0,0,0,0.6);
+}
+.cert.show{display:block;animation:pop .6s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.cert h3{font-size:2rem;color:var(--gold);margin-bottom:8px}
+.cert .pts{font-size:3.5rem;font-weight:800;color:#fff;margin:12px 0}
+canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:200}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+
+<!-- ===== WIDGET FLOTANTE DE LA ESCALERA Y BOTÓN ABAJO ===== -->
+<div class="ladder-floating-widget" id="ladderWidget">
+  <div class="ladder-title">
+    <span>🧗‍♂️ Escalera del Aprendiz</span>
+    <span id="ladderStatus" style="color:var(--primary)">Esc. 1/10</span>
+  </div>
+  <div class="step" id="step10"><span>10. 🏆 Maestro & Certificado</span><span class="apprentice-avatar">🎓</span></div>
+  <div class="step" id="step9"><span>9. Arquitecto de Integración</span><span class="apprentice-avatar">🏛️</span></div>
+  <div class="step" id="step8"><span>8. Principios de Integralidad</span><span class="apprentice-avatar">🔍</span></div>
+  <div class="step" id="step7"><span>7. Modelos Lógicos y Físicos</span><span class="apprentice-avatar">📊</span></div>
+  <div class="step" id="step6"><span>6. Reglas de Negocio</span><span class="apprentice-avatar">📋</span></div>
+  <div class="step" id="step5"><span>5. Depuración de Outliers</span><span class="apprentice-avatar">🧹</span></div>
+  <div class="step" id="step4"><span>4. Tratamiento de Nulos</span><span class="apprentice-avatar">🛠️</span></div>
+  <div class="step" id="step3"><span>3. Técnicas de Limpieza</span><span class="apprentice-avatar">💡</span></div>
+  <div class="step" id="step2"><span>2. Calidad de los Datos</span><span class="apprentice-avatar">📖</span></div>
+  <div class="step active" id="step1"><span>1. Inicio (Base)</span><span class="apprentice-avatar" id="avatarIcon">🧑‍💻</span></div>
+</div>
+
+<!-- Botón para Ocultar/Mostrar situado Abajo a la Derecha -->
+<button class="toggle-ladder-btn" id="toggleLadderBtn" onclick="toggleLadder()">🧗‍♂️ Ocultar Escalera</button>
+
+<div class="score-bar" aria-live="polite">
+  <span>Quiz Interactivo: <b id="sQuiz">0</b>/40</span>
+  <span>Emparejamiento: <b id="sMatch">0</b>/60</span>
+  <span>Puntaje Total: <b id="sTotal">0</b> pts</span>
+</div>
+
+<main>
+  <header>
+    <!-- Contenedor de palabras flotantes alusivas al tema -->
+    <div class="floating-words-container">
+      <span class="floating-word" style="top: 15%; left: -10%; animation-name: floatWord1; animation-duration: 14s; animation-delay: 0s; color: var(--primary); font-size: 1.4rem;">LIMPIEZA DE DATOS</span>
+      <span class="floating-word" style="top: 70%; left: -15%; animation-name: floatWord2; animation-duration: 18s; animation-delay: 2s; color: var(--accent); font-size: 1.2rem;">ETL</span>
+      <span class="floating-word" style="top: 40%; left: -20%; animation-name: floatWord1; animation-duration: 16s; animation-delay: 5s; color: var(--gold); font-size: 1.5rem;">MODELAMIENTO ER</span>
+      <span class="floating-word" style="top: 25%; left: -5%; animation-name: floatWord2; animation-duration: 12s; animation-delay: 1s; color: var(--violet); font-size: 1.1rem;">VALORES NULOS</span>
+      <span class="floating-word" style="top: 85%; left: -10%; animation-name: floatWord1; animation-duration: 15s; animation-delay: 3s; color: var(--primary); font-size: 1.3rem;">INTEGRALIDAD</span>
+      <span class="floating-word" style="top: 50%; left: -12%; animation-name: floatWord2; animation-duration: 20s; animation-delay: 4s; color: var(--accent); font-size: 1.6rem;">OUTLIERS</span>
+      <span class="floating-word" style="top: 10%; left: 30%; animation-name: floatWordVertical; animation-duration: 11s; animation-delay: 1.5s; color: var(--gold); font-size: 1rem;">NORMALIZACIÓN</span>
+      <span class="floating-word" style="top: 75%; left: 60%; animation-name: floatWordVertical; animation-duration: 13s; animation-delay: 3.5s; color: var(--violet); font-size: 1.2rem;">REGLAS DE NEGOCIO</span>
+    </div>
+
+    <h1>Preparación e Integración de Datos</h1>
+    <p class="intro">Descubre cómo transformar datos crudos y dispersos en información limpia, estructurada y confiable, lista para potenciar sistemas avanzados y modelos de inteligencia artificial.</p>
+    <div class="stat"><b>hasta 80%</b><span>del tiempo en proyectos de ciencia de datos se invierte en esta fase</span></div>
+  </header>
+
+  <section>
+    <h2>Explora los Fundamentos</h2>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="card panel" id="panel" role="tabpanel"></div>
+  </section>
+
+  <section>
+    <h2>Juego 1: Desafío de Conocimiento y Limpieza</h2>
+    <div class="card" id="quiz"></div>
+  </section>
+
+  <section>
+    <h2>Juego 2: Constructor de Arquitectura y Reglas de Negocio</h2>
+    <div class="card">
+      <p style="color:var(--mut);margin-bottom:16px">Relaciona correctamente cada enunciado de la izquierda con su respectivo concepto técnico de la derecha. ¡Gana puntos, llega al escalón 10 (100 pts) y desbloquea tu certificado oficial!</p>
+      <div class="prog"><i id="mProg"></i></div>
+      <div class="match"><div id="colL"></div><div id="colR"></div></div>
+      <br>
+      <button class="btn" id="mReset">Reiniciar Constructor</button>
+      <div class="cert" id="cert">
+        <h3>🏆 ¡Certificado de Excelencia & Cima Alcanzada!</h3>
+        <p>¡Felicidades! Has alcanzado los 100 puntos exactos y completado el escalón 10 de la escalera del conocimiento.</p>
+        <div class="pts"><span id="cTotal">100</span> pts</div>
+        <p id="cLevel" style="font-size:1.1rem;font-weight:600;color:var(--gold)">Nivel: Maestro en Datos & IA 🌟</p>
+        <br>
+        <button class="btn" onclick="buildMatch();">Jugar de Nuevo</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ===== FUNCIÓN PARA OCULTAR / MOSTRAR LA ESCALERA LATERAL ===== */
+function toggleLadder() {
+  const widget = document.getElementById('ladderWidget');
+  const btn = document.getElementById('toggleLadderBtn');
+  widget.classList.toggle('collapsed');
+  if (widget.classList.contains('collapsed')) {
+    btn.textContent = '🧗‍♂️ Mostrar Escalera';
+  } else {
+    btn.textContent = '🧗‍♂️ Ocultar Escalera';
+  }
+}
+
+/* ===== CONTROL DE ESCALONES LATERALES DEL APRENDIZ ===== */
+function updateApprenticeLadder(totalScore) {
+  let targetStep = Math.min(10, Math.max(1, Math.floor(totalScore / 10) + 1));
+  
+  for (let i = 1; i <= 10; i++) {
+    const stepEl = document.getElementById(`step${i}`);
+    stepEl.classList.remove('active', 'passed');
+    const avatarSpan = stepEl.querySelector('.apprentice-avatar');
+    if(i !== targetStep) {
+      avatarSpan.textContent = getEmojiForStep(i);
+    }
+  }
+
+  const activeStepEl = document.getElementById(`step${targetStep}`);
+  activeStepEl.classList.add('active');
+  activeStepEl.querySelector('.apprentice-avatar').textContent = '🧑‍💻🧗‍♂️';
+  
+  for(let i = 1; i < targetStep; i++) {
+    document.getElementById(`step${i}`).classList.add('passed');
+  }
+
+  document.getElementById('ladderStatus').textContent = `Esc. ${targetStep}/10`;
+
+  if (targetStep === 10 && totalScore >= 100) {
+    document.getElementById('cert').classList.add('show');
+    playSound('win');
+    confetti();
+  } else {
+    document.getElementById('cert').classList.remove('show');
+  }
+}
+
+function getEmojiForStep(step) {
+  const emojis = ['🧑‍💻', '📖', '💡', '🛠️', '🧹', '📋', '📊', '🔍', '🏛️', '🎓'];
+  return emojis[step - 1];
+}
+
+/* ===== EFECTO DE FONDO INTERACTIVO CON EL SCROLL ===== */
+window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY;
+  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  const scrollFraction = maxScroll > 0 ? scrollTop / maxScroll : 0;
+  
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty('--bg-pos-1', (15 + scrollFraction * 65) + '%');
+  rootStyle.setProperty('--bg-pos-2', (85 - scrollFraction * 55) + '%');
+  rootStyle.setProperty('--bg-pos-3', (50 + Math.sin(scrollFraction * Math.PI * 2) * 25) + '%');
+});
+
+/* ===== SISTEMA DE AUDIO NATIVO (Web Audio API) ===== */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(type) {
+  if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+
+  if (type === 'ok') {
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    osc.start(now); osc.stop(now + 0.3);
+  } else if (type === 'bad') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.linearRampToValueAtTime(130, now + 0.2);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+    osc.start(now); osc.stop(now + 0.25);
+  } else if (type === 'win') {
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.frequency.setValueAtTime(freq, now + idx * 0.1);
+      g.gain.setValueAtTime(0.1, now + idx * 0.1);
+      g.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
+      o.start(now + idx * 0.1); o.stop(now + idx * 0.1 + 0.3);
+    });
+  }
+}
+
+/* ===== CONTENIDO TEÓRICO ===== */
+const TOPICS = [
+{id:"4.1",title:"4.1 Concepto",html:`
+<h3>Concepto de preparación de datos</h3>
+<p>Es la fase crítica que transforma datos sin procesar en formatos limpios y estructurados aptos para modelos de inteligencia artificial y analítica avanzada.</p>
+<div class="grid">
+<div class="mini"><b>Propósito fundamental</b><br>Mejorar la calidad de los datos, eliminando sesgos, inconsistencias y errores que afecten la precisión analítica.</div>
+<div class="mini"><b>Impacto en el tiempo</b><br>Según Provost y Fawcett (2013), esta labor de preparación e integración puede consumir hasta el 80% del tiempo total en un proyecto de ciencia de datos.</div></div>
+<div class="note"><b>Nota clave:</b> Sin una preparación adecuada, los resultados obtenidos por los modelos de machine learning pueden ser sesgados, inexactos o completamente inútiles.</div>`},
+
+{id:"4.2",title:"4.2 Limpieza",html:`
+<h3>Técnicas de limpieza de datos</h3>
+<p>Despliega cada técnica clave para asegurar la integridad de la información:</p>
+<details><summary>1. Valores nulos o faltantes</summary>Decidir entre eliminar registros incompletos o aplicar imputación (reemplazar con media, mediana, moda o modelos predictivos).</details>
+<details><summary>2. Detección de duplicados</summary>Identificar y depurar filas repetidas que distorsionan análisis estadísticos.</details>
+<details><summary>3. Estandarización de formatos</summary>Homologar fechas, monedas, unidades de medida y mayúsculas/minúsculas.</details>
+<details><summary>4. Errores tipográficos</summary>Corregir variantes y errores de digitación en textos o codificaciones.</details>
+<details><summary>5. Outliers o valores atípicos</summary>Detectar mediciones extremas erróneas mediante rangos intercuartílicos o desviación estándar.</details>
+<details><summary>6. Tipos de datos</summary>Verificar que cada variable tenga el tipo correcto (numérico, texto, fecha, booleano).</details>
+<details><summary>7. Reglas de negocio y consistencia</summary>Validar coherencia lógica (ej. fecha de entrega no puede ser anterior a la de envío).</details>
+<details><summary>8. Espacios en blanco</summary>Eliminar caracteres invisibles y espacios sobrantes que fragmentan categorías.</details>
+<div class="note"><b>Herramientas recomendadas:</b> Python (pandas, NumPy, scikit-learn), OpenRefine, Talend y Trifacta para automatizar procesos de limpieza.</div>`},
+
+{id:"4.3",title:"4.3 Modelamiento",html:`
+<h3>Modelamiento orientado a reglas de negocio</h3>
+<p>Organiza y estructura la información para que refleje fielmente los procesos de la organización y sus restricciones operativas.</p>
+<ul>
+<li><b>Entidades y Atributos:</b> Objetos clave del negocio (clientes, productos, envíos) y sus propiedades.</li>
+<li><b>Relaciones:</b> Vínculos entre entidades (uno a uno, uno a muchos, muchos a muchos).</li>
+<li><b>Reglas de integridad y claves:</b> Restricciones estrictas y uso de llaves primarias/foráneas.</li>
+<li><b>Normalización:</b> Descomposición lógica en tablas para evitar redundancias.</li>
+<li><b>Modelos Conceptual, Lógico y Físico:</b> Niveles de abstracción desde el panorama general del negocio hasta la implementación en el SGBD.</li></ul>
+<div class="note"><b>Caso de estudio (Logística):</b> La entidad "Envío" tiene atributos como guía y estado. Una regla de negocio exige que si el estado es 'Entregado', deba existir una fecha de entrega registrada de forma obligatoria.</div>`},
+
+{id:"4.4",title:"4.4 Metodologías",html:`
+<h3>Metodologías de diseño e integración</h3>
+<div class="grid">
+<div class="mini"><b>Modelo Entidad-Relación (ER)</b><br>Representa gráficamente entidades y asociaciones para bases de datos transaccionales.</div>
+<div class="mini"><b>Modelo Dimensional</b><br>Estructuras en estrella o copo de nieve optimizadas para inteligencia empresarial (OLAP).</div>
+<div class="mini"><b>ETL (Extracción, Transformación, Carga)</b><br>Estrategia para consolidar múltiples fuentes de datos heterogéneas en un repositorio central.</div>
+<div class="mini"><b>Herramientas de Integración</b><br>Talend, Apache NiFi, Microsoft SSIS e Informática.</div>
+<div class="mini"><b>Integración en Tiempo Real</b><br>Sincronización continua mediante APIs, middleware y servicios web.</div></div>`},
+
+{id:"4.5",title:"4.5 Integralidad",html:`
+<h3>Principios de integralidad de datos</h3>
+<div class="grid">
+<div class="mini"><b>Completitud</b><br>Todos los campos y registros necesarios se encuentran presentes sin vacíos críticos.</div>
+<div class="mini"><b>Coherencia</b><br>Los datos guardan armonía y no se contradicen entre diferentes fuentes.</div>
+<div class="mini"><b>Exactitud</b><br>Reflejan con precisión milimétrica la realidad del entorno representado.</div>
+<div class="mini"><b>Auditabilidad</b><br>Existe trazabilidad completa sobre el origen y las transformaciones aplicadas.</div>
+<div class="mini"><b>Actualización</b><br>Están al día y reflejan inmediatamente los cambios recientes en origen.</div></div>`}
+];
+
+/* ===== Renderizado de Pestañas ===== */
+const tabs = document.getElementById("tabs"), panel = document.getElementById("panel");
+function showTab(i){
+  [...tabs.children].forEach((b,j)=>b.setAttribute("aria-selected", i===j));
+  panel.innerHTML = TOPICS[i].html;
+  panel.style.animation="none"; panel.offsetHeight; panel.style.animation="";
+}
+TOPICS.forEach((t,i)=>{
+  const b=document.createElement("button");
+  b.className="tab"; b.role="tab"; b.textContent=t.title;
+  b.onclick=()=>showTab(i);
+  tabs.appendChild(b);
+});
+showTab(0);
+
+let quizScore=0, matchScore=0;
+function updateScore(){
+  sQuiz.textContent=quizScore; sMatch.textContent=matchScore;
+  const total = quizScore + matchScore;
+  sTotal.textContent = total;
+  updateApprenticeLadder(total);
+}
+
+/* ===== JUEGO 1: Quiz Interactivo ===== */
+const QUIZ=[
+{q:"¿Qué porcentaje aproximado del tiempo total en un proyecto de ciencia de datos puede consumir la preparación de datos según Provost y Fawcett (2013)?",
+ o:["Hasta un 20%","Cerca del 50%","Hasta el 80%"],a:2,
+ e:"Puede consumir hasta el 80% del tiempo total, evidenciando su importancia crítica."},
+{q:"Cuando una columna posee un porcentaje masivo de valores nulos y no aporta valor analítico, ¿qué acción es recomendable evaluar?",
+ o:["Inventar datos aleatorios","Evaluar eliminar la columna o registro afectado","Duplicar las filas restantes"],a:1,
+ e:"Si hay un porcentaje muy alto de datos faltantes, se evalúa eliminar la columna o fila afectada."},
+{q:"¿Qué principio de integralidad garantiza que se pueda rastrear el origen y los cambios aplicados a un dato?",
+ o:["Auditabilidad","Completitud","Coherencia"],a:0,
+ e:"La auditabilidad proporciona la trazabilidad del origen y transformaciones de los datos."},
+{q:"¿Cuál es la función principal de un esquema en estrella o copo de nieve en el diseño de datos?",
+ o:["Sistemas transaccionales de alta velocidad","Modelado dimensional para inteligencia empresarial y análisis","Creación de interfaces web"],a:1,
+ e:"El modelo dimensional organiza datos para análisis en almacenes o cubos OLAP."}
+];
+let qi=0, qAnswered=false;
+function renderQuiz(){
+  const box=document.getElementById("quiz");
+  if(qi>=QUIZ.length){
+    box.innerHTML=`<h3>¡Quiz Completado!</h3><p style="margin:12px 0;color:var(--mut)">Puntaje obtenido en esta sección: <b>${quizScore}/40 puntos</b></p><button class="btn" onclick="qi=0;quizScore=0;updateScore();renderQuiz()">Volver a Jugar Quiz</button>`;
+    playSound('win');
+    return;
+  }
+  const Q=QUIZ[qi]; qAnswered=false;
+  box.innerHTML=`<div class="prog"><i style="width:${(qi/QUIZ.length)*100}%"></i></div>
+   <p style="color:var(--primary);font-weight:600;margin-bottom:6px">Pregunta ${qi+1} de ${QUIZ.length}</p>
+   <p style="font-size:1.1rem;margin-bottom:16px">${Q.q}</p>
+   ${Q.o.map((t,i)=>`<button class="opt" data-i="${i}">${t}</button>`).join("")}
+   <div id="fb"></div>`;
+  box.querySelectorAll(".opt").forEach(b=>b.onclick=()=>answer(+b.dataset.i,box));
+}
+function answer(i,box){
+  if(qAnswered) return; qAnswered=true;
+  const Q=QUIZ[qi], opts=box.querySelectorAll(".opt"), right=i===Q.a;
+  opts.forEach((b,j)=>{b.disabled=true; if(j===Q.a)b.classList.add("ok"); else if(j===i)b.classList.add("bad");});
+  if(right){ quizScore+=10; updateScore(); playSound('ok'); } else { playSound('bad'); }
+  document.getElementById("fb").innerHTML=`<div class="fb"><b>${right?"✅ ¡Respuesta Correcta! +10 pts":"❌ Respuesta Incorrecta."}</b> ${Q.e}</div>
+   <button class="btn" style="margin-top:14px" id="nx">${qi===QUIZ.length-1?"Ver Resultado Final":"Siguiente Pregunta"}</button>`;
+  document.getElementById("nx").onclick=()=>{qi++;renderQuiz();};
+}
+renderQuiz();
+
+/* ===== JUEGO 2: Constructor (Emparejamiento) ===== */
+const PAIRS=[
+  ["Si el estado del envío es 'Entregado', debe existir fecha de entrega","Regla de negocio lógica"],
+  ["Panorama general y semántico global del negocio","Modelo conceptual"],
+  ["Traduce el concepto técnico a tablas y relaciones lógicas","Modelo lógico"],
+  ["Implementación directa en un SGBD con índices y rendimiento","Modelo físico"],
+  ["Descomponer datos en varias tablas para evitar redundancias","Normalización de datos"],
+  ["Estrategia ETL (Extracción, Transformación y Carga)","Consolidación de fuentes heterogéneas"]
+];
+let mSel=null, mDone=0;
+const colL=document.getElementById("colL"), colR=document.getElementById("colR");
+const shuffle=a=>[...a].sort(()=>Math.random()-.5);
+
+function buildMatch(){
+  colL.innerHTML=colR.innerHTML=""; mSel=null; mDone=0; matchScore=0; updateScore();
+  mProg.style.width="0"; cert.classList.remove("show");
+  shuffle(PAIRS.map((p,i)=>[p[0],i])).forEach(([t,i])=>colL.appendChild(mkBtn(t,i,"L")));
+  shuffle(PAIRS.map((p,i)=>[p[1],i])).forEach(([t,i])=>colR.appendChild(mkBtn(t,i,"R")));
+}
+function mkBtn(text,id,side){
+  const b=document.createElement("button");
+  b.className="m"; b.textContent=text; b.dataset.id=id; b.dataset.side=side;
+  b.onclick=()=>pick(b); return b;
+}
+function pick(b){
+  if(b.classList.contains("done")) return;
+  if(!mSel || mSel.dataset.side===b.dataset.side){
+    if(mSel) mSel.classList.remove("sel");
+    mSel=b; b.classList.add("sel"); playSound('ok'); return;
+  }
+  const ok=mSel.dataset.id===b.dataset.id;
+  if(ok){
+    [mSel,b].forEach(x=>{x.classList.remove("sel");x.classList.add("done");});
+    matchScore+=10; mDone++; mProg.style.width=(mDone/PAIRS.length*100)+"%";
+    playSound('ok');
+    if(mDone===PAIRS.length) setTimeout(finishMatch,500);
+  }else{
+    matchScore=Math.max(0,matchScore-2);
+    [mSel,b].forEach(x=>{x.classList.remove("sel");x.classList.add("shake");setTimeout(()=>x.classList.remove("shake"),400);});
+    playSound('bad');
+  }
+  mSel=null; updateScore();
+}
+function finishMatch(){
+  const total=quizScore+matchScore;
+  cTotal.textContent=total;
+  cLevel.textContent= total>=100?"Nivel: Maestro en Datos & IA 🌟":total>=70?"Nivel: Analista Competente 🚀":"Nivel: Aprendiz — ¡Sigue practicando!";
+  if(total >= 100) {
+    cert.classList.add("show"); playSound('win'); confetti();
+    cert.scrollIntoView({behavior:"smooth",block:"center"});
+  }
+}
+mReset.onclick=buildMatch; buildMatch();
+
+/* ===== Efecto de Confeti ===== */
+function confetti(){
+  if(matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  const c=document.getElementById("fx"), x=c.getContext("2d");
+  c.width=innerWidth; c.height=innerHeight;
+  const cols=["#0ea5e9","#10b981","#f59e0b","#8b5cf6"];
+  const ps=Array.from({length:150},()=>({
+    x:Math.random()*c.width, y:-20,
+    vx:Math.random()*6-3, vy:Math.random()*5+3,
+    s:Math.random()*7+4, c:cols[Math.random()*4|0]
+  }));
+  let f=0;
+  (function loop(){
+    x.clearRect(0,0,c.width,c.height);
+    ps.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      x.fillStyle=p.c; x.fillRect(p.x,p.y,p.s,p.s);
+    });
+    if(++f<200) requestAnimationFrame(loop); else x.clearRect(0,0,c.width,c.height);
+  })();
+}
+</script>
+</body>
+</html>
